@@ -10,7 +10,7 @@ from sqlmodel import SQLModel, Field, Relationship
 class BookRating(SQLModel, table=True):
     __tablename__ = "rating"
 
-    book_id: int = Field(..., foreign_key="book.id", title="Id of the rated book")
+    book_id: int = Field(..., primary_key=True, foreign_key="book.id", title="Id of the rated book")
     average: float = Field(0, title="Average rating")
     votes: int = Field(0, title="Number of votes")
     reviews: int = Field(0, title="Number of reviews")
@@ -28,7 +28,6 @@ class Book(SQLModel, table=True):
     pages: int = Field(..., title="Number of pages")
     publication_date: date = Field(..., title="Publication date")
     publisher: str = Field(..., title="Publisher")
-    rating: None | BookRating = Relationship(back_populates="rating")
 
 
 class UserPrivileges(str, Enum):
@@ -68,9 +67,7 @@ class Order(SQLModel, table=True):
 
     id: Optional[int] = Field(None, primary_key=True, title="Primary Key of the order table")
     order_date: datetime = Field(
-        default_factory=_utc_now,
-        title="Order date",
-        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+        default_factory=_utc_now, title="Order date", sa_column=Column(TIMESTAMP(timezone=True), nullable=False)
     )
     status: OrderStatus = Field(OrderStatus.Pending, title="Order status")
     total_price: float = Field(..., title="Total order price")

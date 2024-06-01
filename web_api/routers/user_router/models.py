@@ -10,9 +10,6 @@ from core import get_settings
 from security.hashing import hash_password
 from ..default_model_config import default_model_config
 
-settings = get_settings()
-settings_security = settings.security
-
 
 class UserRegistrationValidator(SQLModel):
     model_config = default_model_config
@@ -33,9 +30,9 @@ class UserRegistrationValidator(SQLModel):
             raise ValueError("This is not a valid email address")
 
     def _username_validator(self) -> None:
-        if not len(self.username) >= settings_security.username_min_length:
+        if not len(self.username) >= get_settings().security.username_min_length:
             raise ValueError("Username is too short")
-        if not len(self.username) <= settings_security.username_max_length:
+        if not len(self.username) <= get_settings().security.username_max_length:
             raise ValueError("Username is too long")
 
     @model_validator(mode="after")
@@ -49,7 +46,7 @@ class UserRegistrationValidator(SQLModel):
         if not compare_digest(password, repeat_password):
             raise ValueError("Passwords do not match")
 
-        if not re.match(settings_security.user_password_regex, password):
-            raise ValueError(settings_security.user_incorrect_password_message)
+        if not re.match(get_settings().security.user_password_regex, password):
+            raise ValueError(get_settings().security.user_incorrect_password_message)
 
         return self

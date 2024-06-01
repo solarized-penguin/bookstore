@@ -2,9 +2,8 @@ from fastapi import FastAPI
 from prometheus_client import make_asgi_app
 
 from core import get_settings, get_logger
-from middlewares.exceptions.exception import ExceptionHandlerMiddleware
-from routers.order_router import order
 from routers.user_router import user
+from middlewares import get_middlewares
 
 
 def create_app() -> FastAPI:
@@ -21,6 +20,7 @@ def create_app() -> FastAPI:
         redoc_url=get_settings().api.redoc_url,
         swagger_ui_oauth2_redirect_url=get_settings().api.swagger_ui_oauth2_redirect_url,
         include_in_schema=get_settings().api.include_in_schema,
+        middleware=get_middlewares(),
     )
 
     metrics_app = make_asgi_app()
@@ -28,8 +28,6 @@ def create_app() -> FastAPI:
 
     # app.include_router(car.car_router)
     app.include_router(user.user_router)
-    app.include_router(order.order_router)
-
-    app.add_middleware(ExceptionHandlerMiddleware)
+    # app.include_router(order.order_router)
 
     return app
