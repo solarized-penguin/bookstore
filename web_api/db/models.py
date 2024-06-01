@@ -1,4 +1,4 @@
-from datetime import datetime, UTC
+from datetime import date, UTC, datetime
 from enum import Enum
 from typing import Optional
 
@@ -7,38 +7,28 @@ from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlmodel import SQLModel, Field, Relationship
 
 
-class FuelType(str, Enum):
-    Diesel = "Diesel"
-    Petrol = "Petrol"
-    CNG = "CNG"
+class BookRating(SQLModel, table=True):
+    __tablename__ = "rating"
+
+    book_id: int = Field(..., foreign_key="book.id", title="Id of the rated book")
+    average: float = Field(0, title="Average rating")
+    votes: int = Field(0, title="Number of votes")
+    reviews: int = Field(0, title="Number of reviews")
 
 
-class SellerType(str, Enum):
-    Dealer = "Dealer"
-    Individual = "Individual"
+class Book(SQLModel, table=True):
+    __tablename__ = "book"
 
-
-class Transmission(str, Enum):
-    Manual = "Manual"
-    Automatic = "Automatic"
-
-
-class Car(SQLModel, table=True):
-    __tablename__ = "car"
-
-    id: Optional[int] = Field(None, primary_key=True, title="Primary Key of the car table")
-    car_name: str = Field(..., title="Car brand")
-    year: int = Field(..., title="Year of production")
-    selling_price: float = Field(..., title="Selling price")
-    kms_driven: int = Field(..., title="Kilometers driven")
-    fuel_type: FuelType = Field(..., title="Fuel type")
-    seller_type: SellerType = Field(..., title="Seller type")
-    transmission: Transmission = Field(..., title="Automatic or Manual")
-    owner: int = Field(..., title="Number of previous owners")
-
-    is_reserved: bool = Field(False, title="Is car reserved")
-    order_id: Optional[int] = Field(None, foreign_key="order.id", exclude=True)
-    order: Optional["Order"] = Relationship(back_populates="cars")
+    id: int | None = Field(None, primary_key=True, title="Primary key")
+    title: str = Field(..., title="Book title")
+    author: str = Field(..., title="Book author/authors")
+    isbn: str = Field(..., title="Isbn")
+    isbn13: str = Field(..., title="Isbn13")
+    language: str = Field(..., title="Language code")
+    pages: int = Field(..., title="Number of pages")
+    publication_date: date = Field(..., title="Publication date")
+    publisher: str = Field(..., title="Publisher")
+    rating: None | BookRating = Relationship(back_populates="rating")
 
 
 class UserPrivileges(str, Enum):
@@ -85,17 +75,18 @@ class Order(SQLModel, table=True):
     status: OrderStatus = Field(OrderStatus.Pending, title="Order status")
     total_price: float = Field(..., title="Total order price")
     user_id: int = Field(..., title="User ID", foreign_key="user.id")
-    cars: list[Car] = Relationship(back_populates="order", sa_relationship_kwargs={"lazy": "selectin"})
+    # books: list[Book] = Relationship(back_populates="book", sa_relationship_kwargs={"lazy": "selectin"})
 
     @classmethod
-    def new_order(cls, user: User, cars: list[Car]) -> "Order":
-        def _reserve_car(car: Car) -> Car:
-            car.is_reserved = True
-            return car
-
-        reserved_cars = [_reserve_car(car) for car in cars]
-        return cls(
-            total_price=sum(car.selling_price for car in reserved_cars),
-            user_id=user.id,
-            cars=reserved_cars,
-        )
+    def new_order(cls, user: User, books: list[Book]) -> "Order":
+        # def _reserve_car(car: Car) -> Car:
+        #     car.is_reserved = True
+        #     return car
+        #
+        # reserved_cars = [_reserve_car(car) for car in cars]
+        # return cls(
+        #     total_price=sum(car.selling_price for car in reserved_cars),
+        #     user_id=user.id,
+        #     cars=reserved_cars,
+        # )
+        pass
