@@ -1,0 +1,62 @@
+version: "3.7"
+services:
+  app:
+    build:
+      context: .
+    restart: always
+    env_file:
+      - ${DOCKER_COMPOSE_APP_ENV_FILE}
+    depends_on:
+      - db
+      - loki
+    ports:
+      - ${DOCKER_COMPOSE_APP_EXPOSED_PORTS}
+    command: ${DOCKER_COMPOSE_APP_START_COMMAND}
+
+  db:
+    image: postgres:${DOCKER_COMPOSE_POSTGRES_VERSION}
+    restart: always
+    environment:
+      POSTGRES_USER: ${DOCKER_COMPOSE_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${DOCKER_COMPOSE_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${DOCKER_COMPOSE_POSTGRES_DB}
+      POSTGRES_PORT: ${DOCKER_COMPOSE_POSTGRES_PORT}
+      POSTGRES_ECHO: ${DOCKER_COMPOSE_POSTGRES_ECHO}
+    volumes:
+      - pg_data:${DOCKER_COMPOSE_POSTGRES_DATA_VOLUME}
+    ports:
+      - ${DOCKER_COMPOSE_POSTGRES_EXPOSED_PORTS}
+
+  prometheus:
+    image: prom/prometheus:${DOCKER_COMPOSE_PROMETHEUS_VERSION}
+    ports:
+      - ${DOCKER_COMPOSE_PROMETHEUS_EXPOSED_PORTS}
+    volumes:
+      - ./prometheus_data/config.yaml:${DOCKER_COMPOSE_PROMETHEUS_CONFIG_VOLUME}
+    command: --config.file=${DOCKER_COMPOSE_PROMETHEUS_CONFIG_VOLUME}
+
+  loki:
+    image: grafana/loki:${DOCKER_COMPOSE_LOKI_VERSION}
+    ports:
+      - ${DOCKER_COMPOSE_LOKI_EXPOSED_PORTS}
+
+  grafana:
+    image: grafana/grafana:${DOCKER_COMPOSE_GRAFANA_VERSION}
+    environment:
+      GF_LOG_LEVEL: ${DOCKER_COMPOSE_GF_LOG_LEVEL}
+      GF_PATHS_PROVISIONING: ${DOCKER_COMPOSE_GF_PATHS_PROVISIONING}
+      GF_AUTH_ANONYMOUS_ENABLED: ${DOCKER_COMPOSE_GF_AUTH_ANONYMOUS_ENABLED}
+      GF_AUTH_ANONYMOUS_ORG_ROLE: ${DOCKER_COMPOSE_GF_AUTH_ANONYMOUS_ORG_ROLE}
+    ports:
+      - ${DOCKER_COMPOSE_GRAFANA_EXPOSED_PORTS}
+    volumes:
+      - grafana_data:${DOCKER_COMPOSE_GRAFANA_DATA_VOLUME}
+    depends_on:
+      - loki
+      - prometheus
+
+
+volumes:
+  pg_data:
+  grafana_data:
+  prometheus_data:
