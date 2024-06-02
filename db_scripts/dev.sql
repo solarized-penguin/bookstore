@@ -1,3 +1,10 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 14.12 (Debian 14.12-1.pgdg120+1)
+-- Dumped by pg_dump version 16.3 (Ubuntu 16.3-1.pgdg20.04+1)
+
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
@@ -8,6 +15,12 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
+
+--
+-- Name: public; Type: SCHEMA; Schema: -; Owner: postgres
+--
+
+-- *not* creating schema, since initdb creates it
 
 
 ALTER SCHEMA public OWNER TO postgres;
@@ -22552,6 +22565,20 @@ ALTER TABLE ONLY public.orders
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: books_isbn13_uindex; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX books_isbn13_uindex ON public.books USING btree (isbn13);
+
+
+--
+-- Name: books_isbn_uindex; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX books_isbn_uindex ON public.books USING btree (isbn);
 
 
 --

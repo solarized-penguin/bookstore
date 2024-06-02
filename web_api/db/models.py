@@ -11,6 +11,21 @@ def _utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+class BookBase(SQLModel):
+    title: str = Field(..., title="Book title", nullable=False)
+    authors: list[str] = Field(
+        ..., title="Book author/authors", sa_column=Column(PG_ARRAY(item_type=PG_VARCHAR, dimensions=1), nullable=False)
+    )
+    isbn: str = Field(..., title="Isbn", index=True, nullable=False)
+    isbn13: str = Field(..., title="Isbn13", index=True, nullable=False)
+    language: str = Field(..., title="Language code", nullable=False)
+    pages: int = Field(..., title="Number of pages", nullable=False)
+    publication_date: date = Field(
+        ..., title="Publication date", sa_column=Column(PG_TIMESTAMP(timezone=False), nullable=False)
+    )
+    publisher: str = Field(..., title="Publisher", nullable=False)
+
+
 class BookRating(SQLModel, table=True):
     __tablename__ = "book_ratings"
 
@@ -20,22 +35,10 @@ class BookRating(SQLModel, table=True):
     reviews: int = Field(0, title="Number of reviews", nullable=False)
 
 
-class Book(SQLModel, table=True):
+class Book(BookBase, table=True):
     __tablename__ = "books"
 
     id: int | None = Field(None, primary_key=True, title="Primary key")
-    title: str = Field(..., title="Book title", nullable=False)
-    authors: list[str] = Field(
-        ..., title="Book author/authors", sa_column=Column(PG_ARRAY(item_type=PG_VARCHAR, dimensions=1), nullable=False)
-    )
-    isbn: str = Field(..., title="Isbn", nullable=False)
-    isbn13: str = Field(..., title="Isbn13", nullable=False)
-    language: str = Field(..., title="Language code", nullable=False)
-    pages: int = Field(..., title="Number of pages", nullable=False)
-    publication_date: date = Field(
-        ..., title="Publication date", sa_column=Column(PG_TIMESTAMP(timezone=False), nullable=False)
-    )
-    publisher: str = Field(..., title="Publisher", nullable=False)
 
 
 class UserPrivileges(str, Enum):

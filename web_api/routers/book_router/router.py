@@ -9,6 +9,7 @@ from db.models import Book, User
 from db.session import get_session
 from security.auth import UserAuthManager
 
+
 book_router = APIRouter(prefix="/book", tags=["books"], default_response_class=ORJSONResponse, include_in_schema=True)
 
 
@@ -56,8 +57,21 @@ async def get_books_by_ids(
     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"books": [book.model_dump() for book in books]})
 
 
-#
-#
+@book_router.get("/search/", response_model=list[Book])
+async def search_books(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    _: Annotated[User, Depends(UserAuthManager())],
+    title: Annotated[str | None, Query(title="Book title", description="Find books with title like...")] = None,
+    authors: Annotated[
+        list[str] | None, Query(title="Author/authors name", description="Find books with authors with names like...")
+    ] = None,
+    offset: Annotated[int, Query(title="Query offset", ge=0)] = 0,
+    limit: Annotated[
+        int, Query(title="Query limit", description="Setting this to 0 fetches everything since offset.", ge=0)
+    ] = 20,
+) -> Annotated[list[Book], ORJSONResponse]: ...
+
+
 # @book_router.post("/filter/", response_class=ORJSONResponse, response_model=List[Car])
 # async def filter_cars(
 #     min_selling_price: float = Query(None, title="Minimum selling price", gt=0),
