@@ -31,6 +31,7 @@ black = {extras = ["d"], version = "^24.4.2"}
 
 [tool.poetry.group.dev.dependencies]
 uvicorn = {extras = ["all"], version = "^0.29.0"}
+setuptools = "^70.0.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = {extras = ["all"], version = "^8.2.0"}
