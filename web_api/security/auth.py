@@ -6,7 +6,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
 from pydantic import computed_field
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import SQLModel, Field, select
 
 from core import get_settings
@@ -57,9 +57,7 @@ async def get_current_user(
     required_privileges: List[UserPrivileges],
 ) -> User:
     payload = jwt.decode(
-        token,
-        get_settings().security.jwt_secret_key,
-        algorithms=[get_settings().security.jwt_algorithm],
+        token, get_settings().security.jwt_secret_key, algorithms=[get_settings().security.jwt_algorithm]
     )
 
     email = payload.get("sub")
@@ -68,10 +66,7 @@ async def get_current_user(
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     if required_privileges and user.privileges not in required_privileges:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient privileges",
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient privileges")
     return user
 
 

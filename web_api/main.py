@@ -1,16 +1,12 @@
 from fastapi import FastAPI
 from prometheus_client import make_asgi_app
 
-from core import get_settings, get_logger
-from routers.user_router import user
+from core import get_settings
 from middlewares import get_middlewares
+from routers import register_routers
 
 
 def create_app() -> FastAPI:
-    logger = get_logger(__name__)
-
-    logger.info(f"{get_settings().api.title} is starting...")
-
     app = FastAPI(
         title=get_settings().api.title,
         debug=get_settings().api.debug,
@@ -26,8 +22,6 @@ def create_app() -> FastAPI:
     metrics_app = make_asgi_app()
     app.mount("/metrics", metrics_app)
 
-    # app.include_router(car.car_router)
-    app.include_router(user.user_router)
-    # app.include_router(order.order_router)
+    register_routers(app)
 
     return app

@@ -1,20 +1,33 @@
-from fastapi import APIRouter
+from typing import Annotated
 
-book_router = APIRouter(prefix="/book", tags=["books"])
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import ORJSONResponse
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from db.models import Book, User
+from db.session import get_session
+from security.auth import UserAuthManager
+
+book_router = APIRouter(prefix="/book", tags=["books"], default_response_class=ORJSONResponse, include_in_schema=True)
 
 
-# @book_router.get("/", response_model=List[Car], response_class=ORJSONResponse)
-# async def get_cars(
-#     session: AsyncSession = Depends(get_session),
-#     _: User = Depends(UserAuthManager()),
-# ) -> Annotated[List[Car], ORJSONResponse]:
-#     results = await session.execute(select(Car))
-#     cars = results.scalars().all()
-#     if not cars:
-#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Cars not found")
-#     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"cars": [car.model_dump() for car in cars]})
-#
-#
+@book_router.get("/", response_model=list[Book])
+async def get_books(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    _: Annotated[User, Depends(UserAuthManager())],
+    offset: int = Query(0, title="Query offset", ge=0),
+    limit: int = Query(20, title="Query limit", description="Setting this to 0 fetches everything since offset.", ge=0),
+) -> Annotated[list[Book], ORJSONResponse]:
+    statement = select(Book).offset(offset).limit(limit) if limit != 0 else select(Book).offset(offset)
+    results = await session.exec(statement)
+    books = results.all()
+
+    if not books:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No books found!")
+    return ORJSONResponse(status_code=status.HTTP_200_OK, content={"books": [book.model_dump() for book in books]})
+
+
 # @book_router.get("/{car_id}", response_model=Car, response_class=ORJSONResponse)
 # async def get_car(
 #     car_id: int = Path(..., title="Car id", gt=0),

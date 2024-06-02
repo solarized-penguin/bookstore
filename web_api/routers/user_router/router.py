@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, status, Form, HTTPException, Path
 from fastapi.responses import ORJSONResponse
 from pydantic import SecretStr
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from db.models import User, UserPrivileges
 from db.session import get_session
@@ -12,10 +12,10 @@ from .models import UserRegistrationValidator
 from security.auth import Token, UserAuthManager
 from security.hashing import verify_password
 
-user_router = APIRouter(prefix="/user", tags=["users"])
+user_router = APIRouter(prefix="/user", tags=["users"], default_response_class=ORJSONResponse, include_in_schema=True)
 
 
-@user_router.post("/register/", response_model=User, response_class=ORJSONResponse)
+@user_router.post("/register/", response_model=User)
 async def register_user(
     email: str = Form(..., title="Email"),
     password: SecretStr = Form(..., title="Password"),
@@ -42,7 +42,7 @@ async def register_user(
     return ORJSONResponse(status_code=status.HTTP_201_CREATED, content={"user": user.model_dump()})
 
 
-@user_router.post("/login/", response_class=ORJSONResponse)
+@user_router.post("/login/")
 async def login_user(
     email: Annotated[str, Form(..., title="Email", alias="username")],
     password: Annotated[SecretStr, Form(..., title="Password", alias="password")],
@@ -58,22 +58,18 @@ async def login_user(
     return ORJSONResponse(Token.create_access_token(user))
 
 
-@user_router.get("/", response_model=List[User], response_class=ORJSONResponse)
+@user_router.get("/", response_model=List[User])
 async def get_users(
-    session: Annotated[AsyncSession, Depends(get_session)],
-    _: User = Depends(UserAuthManager([UserPrivileges.Admin])),
+    session: Annotated[AsyncSession, Depends(get_session)], _: User = Depends(UserAuthManager([UserPrivileges.Admin]))
 ) -> Annotated[List[User], ORJSONResponse]:
     results = await session.execute(select(User))
     users = results.scalars().all()
     if not users:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Users not found")
-    return ORJSONResponse(
-        status_code=status.HTTP_200_OK,
-        content={"users": [user.model_dump() for user in users]},
-    )
+    return ORJSONResponse(status_code=status.HTTP_200_OK, content={"users": [user.model_dump() for user in users]})
 
 
-@user_router.get("/{id}/", response_model=User, response_class=ORJSONResponse)
+@user_router.get("/{id}/", response_model=User)
 async def get_user(
     id: int = Path(..., title="User id", gt=0),
     session: AsyncSession = Depends(get_session),
@@ -85,6 +81,6 @@ async def get_user(
     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"user": user.model_dump()})
 
 
-@user_router.get("/current", response_model=User, response_class=ORJSONResponse)
+@user_router.get("/current", response_model=User)
 async def get_logged_user(user: Annotated[User, Depends(UserAuthManager())]) -> Annotated[User, ORJSONResponse]:
     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"user": user.model_dump()})
