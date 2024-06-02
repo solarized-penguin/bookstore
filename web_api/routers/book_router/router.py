@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
 from fastapi.responses import ORJSONResponse
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -30,29 +30,32 @@ async def get_books(
     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"books": [book.model_dump() for book in books]})
 
 
-# @book_router.get("/{car_id}", response_model=Car, response_class=ORJSONResponse)
-# async def get_car(
-#     car_id: int = Path(..., title="Car id", gt=0),
-#     session: AsyncSession = Depends(get_session),
-#     _: User = Depends(UserAuthManager()),
-# ) -> Annotated[Car, ORJSONResponse]:
-#     car = await session.get(Car, car_id)
-#     if not car:
-#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Car with id '{car_id}' not found")
-#     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"car": car.model_dump()})
-#
-#
-# @book_router.get("/by_ids/", response_model=List[Car], response_class=ORJSONResponse)
-# async def get_cars_by_ids(
-#     car_ids: List[int] = Query(..., title="List of car ids"),
-#     session: AsyncSession = Depends(get_session),
-#     _: User = Depends(UserAuthManager()),
-# ) -> Annotated[List[Car], ORJSONResponse]:
-#     results = await session.execute(select(Car).filter(Car.id.in_(car_ids)))
-#     cars = results.scalars().all()
-#     if not cars:
-#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Cars not found")
-#     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"cars": [car.model_dump() for car in cars]})
+@book_router.get("/{id}", response_model=Book)
+async def get_book_by_id(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    _: Annotated[User, Depends(UserAuthManager())],
+    id: Annotated[int, Path(title="Book id", gt=0)],
+) -> Annotated[Book, ORJSONResponse]:
+    book = await session.get(Book, id)
+
+    if not book:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id '{id}' not found")
+    return ORJSONResponse(status_code=status.HTTP_200_OK, content={"book": book.model_dump()})
+
+
+@book_router.get("/ids/", response_model=list[Book])
+async def get_books_by_ids(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    _: Annotated[User, Depends(UserAuthManager())],
+    ids: Annotated[list[int], Query(title="List of book ids", min_length=1)],
+) -> Annotated[list[Book], ORJSONResponse]:
+    results = await session.exec(select(Book).where(Book.id.in_(ids)))
+    books = results.all()
+    if not books:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Books not found")
+    return ORJSONResponse(status_code=status.HTTP_200_OK, content={"books": [book.model_dump() for book in books]})
+
+
 #
 #
 # @book_router.post("/filter/", response_class=ORJSONResponse, response_model=List[Car])
