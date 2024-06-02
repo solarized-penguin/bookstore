@@ -16,8 +16,10 @@ book_router = APIRouter(prefix="/book", tags=["books"], default_response_class=O
 async def get_books(
     session: Annotated[AsyncSession, Depends(get_session)],
     _: Annotated[User, Depends(UserAuthManager())],
-    offset: int = Query(0, title="Query offset", ge=0),
-    limit: int = Query(20, title="Query limit", description="Setting this to 0 fetches everything since offset.", ge=0),
+    offset: Annotated[int, Query(title="Query offset", ge=0)] = 0,
+    limit: Annotated[
+        int, Query(title="Query limit", description="Setting this to 0 fetches everything since offset.", ge=0)
+    ] = 20,
 ) -> Annotated[list[Book], ORJSONResponse]:
     statement = select(Book).offset(offset).limit(limit) if limit != 0 else select(Book).offset(offset)
     results = await session.exec(statement)
