@@ -1,7 +1,7 @@
 import bcrypt
 
 from core import get_settings
-from exceptions.custom_exceptions import HashingPasswordFailedException
+from exceptions import HashingPasswordFailedException
 
 
 def verify_password(password: str, db_hash_password: bytes) -> bool:

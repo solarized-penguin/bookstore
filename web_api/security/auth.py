@@ -10,8 +10,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import SQLModel, Field, select
 
 from core import get_settings
-from db.models import User, UserPrivileges
-from db.session import get_session
+from db import User, UserPrivileges
+from db import get_session
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="user/login/")
 

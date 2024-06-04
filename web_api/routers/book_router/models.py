@@ -1,14 +1,13 @@
 from datetime import date
-from typing import TypeVar, Annotated, Self, Any
+from typing import Annotated
 
 from fastapi import Query, Depends
-
 from sqlalchemy import Row
 from sqlmodel import Field, SQLModel
 
-from db.models import BookBase, BookRatingBase as Rating, Book as BookDb, BookRating as RatingDb
-from lib.paginator import Pagination
 from core import get_settings
+from db import BookBase, BookRatingBase as Rating, Book as BookDb, BookRating as RatingDb
+from lib import Pagination
 
 IncludeRatingsQuery = Annotated[
     bool,

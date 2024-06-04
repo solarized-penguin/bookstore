@@ -1,12 +1,12 @@
 from fastapi import FastAPI
 from prometheus_client import make_asgi_app
 
-from core import get_settings
-from middlewares import get_middlewares
-from routers import register_routers
-
 
 def create_app() -> FastAPI:
+    from core import get_settings
+    from middlewares import get_middlewares
+    from routers import register_routers
+
     app = FastAPI(
         title=get_settings().api.title,
         debug=get_settings().api.debug,

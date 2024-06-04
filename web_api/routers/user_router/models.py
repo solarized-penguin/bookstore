@@ -7,7 +7,7 @@ from pydantic import SecretStr, model_validator
 from sqlmodel import SQLModel, Field
 
 from core import get_settings
-from security.hashing import hash_password
+from security import hash_password
 
 
 class UserRegistrationValidator(SQLModel):

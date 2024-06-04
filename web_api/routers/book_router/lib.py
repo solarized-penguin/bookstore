@@ -1,6 +1,6 @@
 from sqlmodel.sql.expression import Select, SelectOfScalar, select
 
-from db.models import Book, BookRating
+from db import Book, BookRating
 from lib import Paginator
 
 

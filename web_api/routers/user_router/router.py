@@ -6,11 +6,11 @@ from pydantic import SecretStr
 from sqlalchemy import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from db.models import User, UserPrivileges
-from db.session import get_session
+from db import User, UserPrivileges
+from db import get_session
 from .models import UserRegistrationValidator
-from security.auth import Token, UserAuthManager
-from security.hashing import verify_password
+from security import Token, UserAuthManager, verify_password
+
 
 user_router = APIRouter(prefix="/user", tags=["users"], default_response_class=ORJSONResponse, include_in_schema=True)
 

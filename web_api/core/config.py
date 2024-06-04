@@ -1,8 +1,9 @@
 from datetime import timedelta
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import PostgresDsn, Field
-from pydantic.config import ExtraValues, ConfigDict
+from pydantic.config import ConfigDict
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,10 +15,10 @@ class BaseConfig(BaseSettings):
 
 class RouterModelsDefaultConfigSettings(BaseConfig, env_prefix="BOOKS_ROUTER_MODELS_DEFAULTS_"):
     str_strip_whitespace: bool
-    extra: ExtraValues
+    extra: Literal["allow", "ignore", "forbid"]
     use_enum_values: bool
     hide_input_in_errors: bool
-    cache_strings: bool
+    cache_strings: Literal["all", "keys", "none"]
 
     @property
     def config(self) -> ConfigDict:
