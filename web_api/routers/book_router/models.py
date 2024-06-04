@@ -1,6 +1,6 @@
 from typing import TypeVar, Annotated, Self, Any
 
-from fastapi import Query
+from fastapi import Query, Depends
 from pydantic import model_serializer
 from sqlalchemy import Row
 from sqlmodel import Field
@@ -28,22 +28,24 @@ class BookRead(BookBase):
     )
 
     @classmethod
-    def create_book(cls, book_data: Row[BookDb, RatingDb] | BookDb) -> "BookRead":
-        book = book_data[0] if isinstance(book_data, Row) else book_data
-        rating = book_data[1] if isinstance(book_data, Row) else None
+    def create_book(cls, book_data: Row[BookDb, RatingDb] | BookDb | None) -> "BookRead | None":
+        if book_data:
+            book = book_data[0] if isinstance(book_data, Row) else book_data
+            rating = book_data[1] if isinstance(book_data, Row) else None
 
-        return cls(
-            id=book.id,
-            title=book.title,
-            authors=book.authors,
-            isbn=book.isbn,
-            isbn13=book.isbn13,
-            language=book.language,
-            pages=book.pages,
-            publication_date=book.publication_date,
-            publisher=book.publisher,
-            rating=Rating(average=rating.average, votes=rating.votes, reviews=rating.reviews) if rating else None,
-        )
+            return cls(
+                id=book.id,
+                title=book.title,
+                authors=book.authors,
+                isbn=book.isbn,
+                isbn13=book.isbn13,
+                language=book.language,
+                pages=book.pages,
+                publication_date=book.publication_date,
+                publisher=book.publisher,
+                rating=Rating(average=rating.average, votes=rating.votes, reviews=rating.reviews) if rating else None,
+            )
+        return None
 
 
 # class CarFilter(SQLModel):

@@ -10,7 +10,8 @@ from db.models import Book, User, BookRating
 from db.session import get_session
 from security.auth import UserAuthManager
 from .models import BookRead, IncludeRatingsQuery
-
+from .lib import create_base_select_statement
+from ..paginator import Pagination
 
 book_router = APIRouter(prefix="/book", tags=["books"], default_response_class=ORJSONResponse, include_in_schema=True)
 
@@ -19,16 +20,10 @@ book_router = APIRouter(prefix="/book", tags=["books"], default_response_class=O
 async def get_books(
     session: Annotated[AsyncSession, Depends(get_session)],
     _: Annotated[User, Depends(UserAuthManager())],
-    offset: Annotated[int, Query(title="Query offset", ge=0)] = 0,
-    limit: Annotated[
-        int, Query(title="Query limit", description="Setting this to 0 fetches everything since offset.", ge=0)
-    ] = 20,
+    pagination: Pagination,
     include_ratings: IncludeRatingsQuery = False,
 ) -> Annotated[list[BookRead], ORJSONResponse]:
-    select_where = select(Book, BookRating).where(Book.id == BookRating.book_id) if include_ratings else select(Book)
-    statement = select_where.offset(offset).limit(limit) if limit != 0 else select_where.offset(offset)
-
-    results = await session.exec(statement)
+    results = await session.exec(create_base_select_statement(include_ratings, pagination))
     books = [BookRead.create_book(result) for result in results]
 
     if not books:
@@ -39,36 +34,45 @@ async def get_books(
     )
 
 
-@book_router.get("/{id}", response_model=Book)
+@book_router.get("/{id}", response_model=BookRead)
 async def get_book_by_id(
     session: Annotated[AsyncSession, Depends(get_session)],
     _: Annotated[User, Depends(UserAuthManager())],
     id: Annotated[int, Path(title="Book id", gt=0)],
-) -> Annotated[Book, ORJSONResponse]:
-    book = await session.get(Book, id)
+    include_ratings: IncludeRatingsQuery = False,
+) -> Annotated[BookRead, ORJSONResponse]:
+    statement = create_base_select_statement(include_ratings).where(Book.id == id)
+    results = await session.exec(statement)
+    result = results.first()
+    book = BookRead.create_book(result)
 
     if not book:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id '{id}' not found")
     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"book": book.model_dump()})
 
 
-@book_router.get("/ids/", response_model=list[Book])
+@book_router.get("/ids/", response_model=list[BookRead])
 async def get_books_by_ids(
     session: Annotated[AsyncSession, Depends(get_session)],
     _: Annotated[User, Depends(UserAuthManager())],
     ids: Annotated[list[int], Query(title="List of book ids", min_length=1)],
-) -> Annotated[list[Book], ORJSONResponse]:
-    results = await session.exec(select(Book).where(Book.id.in_(ids)))
-    books = results.all()
+    include_ratings: IncludeRatingsQuery = False,
+) -> Annotated[list[BookRead], ORJSONResponse]:
+    statement = create_base_select_statement(include_ratings).where(Book.id.in_(ids))
+    results = await session.exec(statement)
+
+    books = [BookRead.create_book(result) for result in results]
+
     if not books:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Books not found")
     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"books": [book.model_dump() for book in books]})
 
 
-@book_router.get("/search/", response_model=list[Book])
+@book_router.get("/search/", response_model=list[BookRead])
 async def search_books(
     session: Annotated[AsyncSession, Depends(get_session)],
     _: Annotated[User, Depends(UserAuthManager())],
+    pagination: Pagination,
     title: Annotated[str | None, Query(title="Book title", description="Find books with title like...")] = None,
     authors: Annotated[
         list[str] | None, Query(title="Author/authors name", description="Find books with authors with names like...")
@@ -82,11 +86,8 @@ async def search_books(
     publisher: Annotated[
         str | None, Query(title="Publisher name", description="Find books with publisher named like...")
     ] = None,
-    offset: Annotated[int, Query(title="Query offset", ge=0)] = 0,
-    limit: Annotated[
-        int, Query(title="Query limit", description="Setting this to 0 fetches everything since offset.", ge=0)
-    ] = 20,
-) -> Annotated[list[Book], ORJSONResponse]: ...
+    include_ratings: IncludeRatingsQuery = False,
+) -> Annotated[list[BookRead], ORJSONResponse]: ...
 
 
 # @book_router.post("/filter/", response_class=ORJSONResponse, response_model=List[Car])
