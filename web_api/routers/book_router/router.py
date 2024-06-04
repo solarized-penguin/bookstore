@@ -9,9 +9,9 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from db.models import Book, User, BookRating
 from db.session import get_session
 from security.auth import UserAuthManager
-from .models import BookRead, IncludeRatingsQuery
+from .models import BookRead, IncludeRatingsQuery, BookSearch
 from .lib import create_base_select_statement
-from ..paginator import Pagination
+from lib import Pagination
 
 book_router = APIRouter(prefix="/book", tags=["books"], default_response_class=ORJSONResponse, include_in_schema=True)
 
@@ -72,21 +72,7 @@ async def get_books_by_ids(
 async def search_books(
     session: Annotated[AsyncSession, Depends(get_session)],
     _: Annotated[User, Depends(UserAuthManager())],
-    pagination: Pagination,
-    title: Annotated[str | None, Query(title="Book title", description="Find books with title like...")] = None,
-    authors: Annotated[
-        list[str] | None, Query(title="Author/authors name", description="Find books with authors with names like...")
-    ] = None,
-    published_before: Annotated[
-        date | None, Query(title="publication_date", description="Find books published before <date>")
-    ] = None,
-    published_after: Annotated[
-        date | None, Query(title="publication_date", description="Find books published after <date>")
-    ] = None,
-    publisher: Annotated[
-        str | None, Query(title="Publisher name", description="Find books with publisher named like...")
-    ] = None,
-    include_ratings: IncludeRatingsQuery = False,
+    search: BookSearch,
 ) -> Annotated[list[BookRead], ORJSONResponse]: ...
 
 

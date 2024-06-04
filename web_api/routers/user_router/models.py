@@ -8,11 +8,10 @@ from sqlmodel import SQLModel, Field
 
 from core import get_settings
 from security.hashing import hash_password
-from ..default_model_config import default_model_config
 
 
 class UserRegistrationValidator(SQLModel):
-    model_config = default_model_config
+    model_config = get_settings().router_models_config.model_config
 
     email: str = Field(...)
     password: SecretStr = Field(...)

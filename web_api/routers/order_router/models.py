@@ -3,7 +3,7 @@ from typing import Any
 from sqlmodel import SQLModel, Field
 
 # from db.models import Car, Order
-from ..default_model_config import default_model_config
+
 
 #
 #

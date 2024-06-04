@@ -1,7 +1,7 @@
 from sqlmodel.sql.expression import Select, SelectOfScalar, select
 
 from db.models import Book, BookRating
-from ..paginator import Paginator
+from lib import Paginator
 
 
 def create_base_select_statement(include_ratings: bool, paginator: Paginator | None = None) -> Select | SelectOfScalar:

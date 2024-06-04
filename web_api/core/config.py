@@ -2,6 +2,7 @@ from datetime import timedelta
 from functools import lru_cache
 
 from pydantic import PostgresDsn, Field
+from pydantic.config import ExtraValues, ConfigDict
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,6 +10,24 @@ class BaseConfig(BaseSettings):
     model_config = SettingsConfigDict(
         case_sensitive=False, env_file=(".env.debug", ".env.dev"), env_file_encoding="utf-8", extra="ignore"
     )
+
+
+class RouterModelsDefaultConfigSettings(BaseConfig, env_prefix="BOOKS_ROUTER_MODELS_DEFAULTS_"):
+    str_strip_whitespace: bool
+    extra: ExtraValues
+    use_enum_values: bool
+    hide_input_in_errors: bool
+    cache_strings: bool
+
+    @property
+    def config(self) -> ConfigDict:
+        return ConfigDict(
+            str_strip_whitespace=self.str_strip_whitespace,
+            extra=self.extra,
+            use_enum_values=self.use_enum_values,
+            hide_input_in_errors=self.hide_input_in_errors,
+            cache_strings=self.cache_strings,
+        )
 
 
 class LoggingSettings(BaseConfig, env_prefix="BOOKS_LOGGING_"):
@@ -78,6 +97,7 @@ class Settings(BaseConfig):
     db: DbSettings = DbSettings()
     security: SecuritySettings = SecuritySettings()
     logging: LoggingSettings = LoggingSettings()
+    router_models_config: RouterModelsDefaultConfigSettings = RouterModelsDefaultConfigSettings()
 
 
 @lru_cache

@@ -1,13 +1,14 @@
+from datetime import date
 from typing import TypeVar, Annotated, Self, Any
 
 from fastapi import Query, Depends
-from pydantic import model_serializer
+
 from sqlalchemy import Row
-from sqlmodel import Field
+from sqlmodel import Field, SQLModel
 
 from db.models import BookBase, BookRatingBase as Rating, Book as BookDb, BookRating as RatingDb
-from ..default_model_config import default_model_config
-
+from lib.paginator import Pagination
+from core import get_settings
 
 IncludeRatingsQuery = Annotated[
     bool,
@@ -19,8 +20,61 @@ IncludeRatingsQuery = Annotated[
 ]
 
 
+class RatingsSearcher(SQLModel):
+    average: float | None
+    votes: int | None
+    reviews: int | None
+
+
+class BookSearcher(SQLModel):
+    title: str | None
+    authors: list[str] | None
+    published_before: date | None
+    published_after: date | None
+    publisher: str | None
+    language: str | None
+    ratings: RatingsSearcher | None
+
+
+def _get_ratings_params(
+    average: Annotated[float | None, Query(title="Average ratings", ge=0)] = None,
+    votes: Annotated[int | None, Query(title="Number of votes", ge=0)] = None,
+    reviews: Annotated[int | None, Query(title="Number of reviews", ge=0)] = None,
+) -> RatingsSearcher:
+    return RatingsSearcher(average=average, votes=votes, reviews=reviews)
+
+
+RatingsQuery = Annotated[RatingsSearcher, Depends(_get_ratings_params)]
+
+
+def _get_book_search_params(
+    pagination: Pagination,
+    ratings: RatingsQuery,
+    title: Annotated[str | None, Query(title="Book title", description="Find books with title like...")] = None,
+    authors: Annotated[
+        list[str] | None, Query(title="Author/authors name", description="Find books with authors with names like...")
+    ] = None,
+    published_before: Annotated[
+        date | None, Query(title="Publication date", description="Find books published before <date>")
+    ] = None,
+    published_after: Annotated[
+        date | None, Query(title="Publication date", description="Find books published after <date>")
+    ] = None,
+    publisher: Annotated[
+        str | None, Query(title="Publisher name", description="Find books with publisher named like...")
+    ] = None,
+    language: Annotated[
+        str | None, Query(title="Language like", description="Find books with language like...")
+    ] = None,
+    include_ratings: IncludeRatingsQuery = False,
+) -> BookSearcher: ...
+
+
+BookSearch = Annotated[BookSearcher, Depends(_get_book_search_params)]
+
+
 class BookRead(BookBase):
-    model_config = default_model_config
+    model_config = get_settings().router_models_config.config
 
     id: int = Field(..., title="Book id", gt=0)
     rating: Rating | None = Field(
