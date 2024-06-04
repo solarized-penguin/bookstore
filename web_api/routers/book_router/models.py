@@ -1,11 +1,49 @@
-from typing import TypeVar, Optional
+from typing import TypeVar, Annotated, Self, Any
 
-from sqlmodel import SQLModel, Field, select
+from fastapi import Query
+from pydantic import model_serializer
+from sqlalchemy import Row
+from sqlmodel import Field
 
+from db.models import BookBase, BookRatingBase as Rating, Book as BookDb, BookRating as RatingDb
 from ..default_model_config import default_model_config
-from db.models import BookBase, BookRating
 
-Statement = TypeVar("Statement")
+
+IncludeRatingsQuery = Annotated[
+    bool,
+    Query(
+        title="Should model include ratings? Defaults to False",
+        description="Setting to True extends model by attaching average ratings for each book if available",
+        allow_inf_nan=False,
+    ),
+]
+
+
+class BookRead(BookBase):
+    model_config = default_model_config
+
+    id: int = Field(..., title="Book id", gt=0)
+    rating: Rating | None = Field(
+        None, title="Book avg rating stats", description="Average readers rating, number of votes and reviews"
+    )
+
+    @classmethod
+    def create_book(cls, book_data: Row[BookDb, RatingDb] | BookDb) -> "BookRead":
+        book = book_data[0] if isinstance(book_data, Row) else book_data
+        rating = book_data[1] if isinstance(book_data, Row) else None
+
+        return cls(
+            id=book.id,
+            title=book.title,
+            authors=book.authors,
+            isbn=book.isbn,
+            isbn13=book.isbn13,
+            language=book.language,
+            pages=book.pages,
+            publication_date=book.publication_date,
+            publisher=book.publisher,
+            rating=Rating(average=rating.average, votes=rating.votes, reviews=rating.reviews) if rating else None,
+        )
 
 
 # class CarFilter(SQLModel):

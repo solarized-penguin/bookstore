@@ -3,7 +3,12 @@ from enum import Enum
 from typing import Optional
 
 from sqlalchemy import Column
-from sqlalchemy.dialects.postgresql import TIMESTAMP as PG_TIMESTAMP, ARRAY as PG_ARRAY, VARCHAR as PG_VARCHAR
+from sqlalchemy.dialects.postgresql import (
+    TIMESTAMP as PG_TIMESTAMP,
+    ARRAY as PG_ARRAY,
+    VARCHAR as PG_VARCHAR,
+    DATE as PG_DATE,
+)
 from sqlmodel import SQLModel, Field
 
 
@@ -20,19 +25,20 @@ class BookBase(SQLModel):
     isbn13: str = Field(..., title="Isbn13", index=True, nullable=False)
     language: str = Field(..., title="Language code", nullable=False)
     pages: int = Field(..., title="Number of pages", nullable=False)
-    publication_date: date = Field(
-        ..., title="Publication date", sa_column=Column(PG_TIMESTAMP(timezone=False), nullable=False)
-    )
+    publication_date: date = Field(..., title="Publication date", sa_column=Column(PG_DATE(), nullable=False))
     publisher: str = Field(..., title="Publisher", nullable=False)
 
 
-class BookRating(SQLModel, table=True):
-    __tablename__ = "book_ratings"
-
-    book_id: int = Field(..., primary_key=True, foreign_key="books.id", title="Id of the rated book", nullable=False)
+class BookRatingBase(SQLModel):
     average: float = Field(0.0, title="Average rating", nullable=False)
     votes: int = Field(0, title="Number of votes", nullable=False)
     reviews: int = Field(0, title="Number of reviews", nullable=False)
+
+
+class BookRating(BookRatingBase, table=True):
+    __tablename__ = "book_ratings"
+
+    book_id: int = Field(..., primary_key=True, foreign_key="books.id", title="Id of the rated book", nullable=False)
 
 
 class Book(BookBase, table=True):

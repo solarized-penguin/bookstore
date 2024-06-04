@@ -6,7 +6,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class BaseConfig(BaseSettings):
-    model_config = SettingsConfigDict(case_sensitive=False, env_file=(".env.dev",), env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        case_sensitive=False, env_file=(".env.debug", ".env.dev"), env_file_encoding="utf-8", extra="ignore"
+    )
 
 
 class LoggingSettings(BaseConfig, env_prefix="BOOKS_LOGGING_"):

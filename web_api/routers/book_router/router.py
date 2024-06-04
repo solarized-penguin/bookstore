@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
@@ -5,15 +6,16 @@ from fastapi.responses import ORJSONResponse
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from db.models import Book, User
+from db.models import Book, User, BookRating
 from db.session import get_session
 from security.auth import UserAuthManager
+from .models import BookRead, IncludeRatingsQuery
 
 
 book_router = APIRouter(prefix="/book", tags=["books"], default_response_class=ORJSONResponse, include_in_schema=True)
 
 
-@book_router.get("/", response_model=list[Book])
+@book_router.get("/", response_model=list[BookRead])
 async def get_books(
     session: Annotated[AsyncSession, Depends(get_session)],
     _: Annotated[User, Depends(UserAuthManager())],
@@ -21,14 +23,20 @@ async def get_books(
     limit: Annotated[
         int, Query(title="Query limit", description="Setting this to 0 fetches everything since offset.", ge=0)
     ] = 20,
-) -> Annotated[list[Book], ORJSONResponse]:
-    statement = select(Book).offset(offset).limit(limit) if limit != 0 else select(Book).offset(offset)
+    include_ratings: IncludeRatingsQuery = False,
+) -> Annotated[list[BookRead], ORJSONResponse]:
+    select_where = select(Book, BookRating).where(Book.id == BookRating.book_id) if include_ratings else select(Book)
+    statement = select_where.offset(offset).limit(limit) if limit != 0 else select_where.offset(offset)
+
     results = await session.exec(statement)
-    books = results.all()
+    books = [BookRead.create_book(result) for result in results]
 
     if not books:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No books found!")
-    return ORJSONResponse(status_code=status.HTTP_200_OK, content={"books": [book.model_dump() for book in books]})
+    return ORJSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"books": [book.model_dump(mode="json", exclude_none=True) for book in books]},
+    )
 
 
 @book_router.get("/{id}", response_model=Book)
@@ -64,6 +72,15 @@ async def search_books(
     title: Annotated[str | None, Query(title="Book title", description="Find books with title like...")] = None,
     authors: Annotated[
         list[str] | None, Query(title="Author/authors name", description="Find books with authors with names like...")
+    ] = None,
+    published_before: Annotated[
+        date | None, Query(title="publication_date", description="Find books published before <date>")
+    ] = None,
+    published_after: Annotated[
+        date | None, Query(title="publication_date", description="Find books published after <date>")
+    ] = None,
+    publisher: Annotated[
+        str | None, Query(title="Publisher name", description="Find books with publisher named like...")
     ] = None,
     offset: Annotated[int, Query(title="Query offset", ge=0)] = 0,
     limit: Annotated[
