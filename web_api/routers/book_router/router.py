@@ -2,26 +2,25 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
 from fastapi.responses import ORJSONResponse
-from sqlmodel.ext.asyncio.session import AsyncSession
 
-from db import Book, User
-from db import get_session
+from db import User
 from lib import Pagination
+from repositories import BookRepository
 from security import UserAuthManager
-from .lib import create_base_select_statement
-from .models import BookRead, IncludeRatingsQuery, BookSearch
+from .lib import BookSearch
+from .models import BookRead, IncludeRatingsQuery
 
 book_router = APIRouter(prefix="/book", tags=["books"], default_response_class=ORJSONResponse, include_in_schema=True)
 
 
 @book_router.get("/", response_model=list[BookRead])
 async def get_books(
-    session: Annotated[AsyncSession, Depends(get_session)],
+    repo: Annotated[BookRepository, Depends(BookRepository.create)],
     _: Annotated[User, Depends(UserAuthManager())],
     pagination: Pagination,
     include_ratings: IncludeRatingsQuery = False,
 ) -> Annotated[list[BookRead], ORJSONResponse]:
-    results = await session.exec(create_base_select_statement(include_ratings, pagination))
+    results = await repo.all(include_ratings, pagination)
     books = [BookRead.create_book(result) for result in results]
 
     if not books:
@@ -34,15 +33,13 @@ async def get_books(
 
 @book_router.get("/{id}", response_model=BookRead)
 async def get_book_by_id(
-    session: Annotated[AsyncSession, Depends(get_session)],
+    repo: Annotated[BookRepository, Depends(BookRepository.create)],
     _: Annotated[User, Depends(UserAuthManager())],
     id: Annotated[int, Path(title="Book id", gt=0)],
     include_ratings: IncludeRatingsQuery = False,
 ) -> Annotated[BookRead, ORJSONResponse]:
-    statement = create_base_select_statement(include_ratings).where(Book.id == id)
-    results = await session.exec(statement)
-    result = results.first()
-    book = BookRead.create_book(result)
+    results = await repo.by_id(id, include_ratings)
+    book = BookRead.create_book(results.first())
 
     if not book:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id '{id}' not found")
@@ -51,13 +48,12 @@ async def get_book_by_id(
 
 @book_router.get("/ids/", response_model=list[BookRead])
 async def get_books_by_ids(
-    session: Annotated[AsyncSession, Depends(get_session)],
+    repo: Annotated[BookRepository, Depends(BookRepository.create)],
     _: Annotated[User, Depends(UserAuthManager())],
     ids: Annotated[list[int], Query(title="List of book ids", min_length=1)],
     include_ratings: IncludeRatingsQuery = False,
 ) -> Annotated[list[BookRead], ORJSONResponse]:
-    statement = create_base_select_statement(include_ratings).where(Book.id.in_(ids))
-    results = await session.exec(statement)
+    results = await repo.by_ids(ids, include_ratings)
 
     books = [BookRead.create_book(result) for result in results]
 
@@ -68,10 +64,14 @@ async def get_books_by_ids(
 
 @book_router.get("/search/", response_model=list[BookRead])
 async def search_books(
-    session: Annotated[AsyncSession, Depends(get_session)],
+    repo: Annotated[BookRepository, Depends(BookRepository.create)],
     _: Annotated[User, Depends(UserAuthManager())],
     search: BookSearch,
-) -> Annotated[list[BookRead], ORJSONResponse]: ...
+    pagination: Pagination,
+    include_ratings: IncludeRatingsQuery = False,
+) -> Annotated[list[BookRead], ORJSONResponse]:
+
+    return ORJSONResponse(status_code=status.HTTP_200_OK, content={"books": "[book.model_dump() for book in books]"})
 
 
 # @book_router.post("/filter/", response_class=ORJSONResponse, response_model=List[Car])
@@ -156,4 +156,4 @@ async def search_books(
 #
 #     return ORJSONResponse(
 #         status_code=status.HTTP_201_CREATED, content={"message": "Model updated", "model": updated_car.model_dump()}
-#     )
+#     )rertreture

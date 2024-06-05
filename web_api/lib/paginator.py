@@ -2,6 +2,7 @@ from typing import Annotated
 
 from fastapi import Query, Depends
 from sqlmodel import SQLModel
+from sqlmodel.sql.expression import Select, SelectOfScalar
 
 PageQuery = Annotated[int, Query(title="Skip x records", ge=0)]
 PerPageQuery = Annotated[
@@ -22,3 +23,13 @@ def _get_pagination_params(page: PageQuery = 0, per_page: PerPageQuery = 20) -> 
 
 
 Pagination = Annotated[Paginator, Depends(_get_pagination_params)]
+
+
+def paginate_query(base_select: Select | SelectOfScalar, paginator: Paginator | None) -> Select | SelectOfScalar:
+    if paginator:
+        return (
+            base_select.offset(paginator.page).limit(paginator.per_page)
+            if paginator.per_page != 0
+            else base_select.offset(paginator.page)
+        )
+    return base_select
