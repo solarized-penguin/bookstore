@@ -81,6 +81,6 @@ async def get_user(
     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"user": user.model_dump()})
 
 
-@user_router.get("/current", response_model=User)
+@user_router.get("/current/", response_model=User)
 async def get_logged_user(user: Annotated[User, Depends(UserAuthManager())]) -> Annotated[User, ORJSONResponse]:
     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"user": user.model_dump()})

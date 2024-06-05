@@ -1,14 +1,14 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body
 from fastapi.responses import ORJSONResponse
 
-from db import User
+from db import User, UserPrivileges
 from lib import Pagination
 from repositories import BookRepository
 from security import UserAuthManager
 from .lib import BookSearch
-from .models import BookRead, IncludeRatingsQuery
+from .models import BookRead, IncludeRatingsQuery, BookCreate
 
 book_router = APIRouter(prefix="/book", tags=["books"], default_response_class=ORJSONResponse, include_in_schema=True)
 
@@ -31,7 +31,7 @@ async def get_books(
     )
 
 
-@book_router.get("/{id}", response_model=BookRead)
+@book_router.get("/{id}/", response_model=BookRead)
 async def get_book_by_id(
     repo: Annotated[BookRepository, Depends(BookRepository.create)],
     _: Annotated[User, Depends(UserAuthManager())],
@@ -81,33 +81,20 @@ async def search_books(
     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"books": [book.model_dump() for book in books]})
 
 
-# @book_router.post("/filter/", response_class=ORJSONResponse, response_model=List[Car])
-# async def filter_cars(
-#     min_selling_price: float = Query(None, title="Minimum selling price", gt=0),
-#     max_selling_price: float = Query(None, title="Maximum selling price", gt=0),
-#     max_kms_driven: int = Query(None, title="Kilometers driven", gt=0),
-#     no_older_than_created_in_year: int = Query(None, title="Produced not earlier than in specified year", gt=1900),
-#     fewer_owners_than: int = Query(None, title="Less previous owners than", ge=0),
-#     car_filter: CarFilter = Body(None),
-#     session: AsyncSession = Depends(get_session),
-#     _: User = Depends(UserAuthManager()),
-# ) -> Annotated[List[Car], ORJSONResponse]:
-#     statement = build_car_filter_statement(
-#         car_filter=car_filter,
-#         min_selling_price=min_selling_price,
-#         max_selling_price=max_selling_price,
-#         no_older_than_created_in_year=no_older_than_created_in_year,
-#         max_kms_driven=max_kms_driven,
-#         fewer_owners_than=fewer_owners_than,
-#     )
-#     results = await session.execute(statement)
-#     cars = results.scalars().all()
-#     if not cars:
-#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Cars meeting this criteria not found")
-#     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"cars": [car.model_dump() for car in cars]})
-#
-#
-# @book_router.post("/add/", response_class=ORJSONResponse, response_model=Car)
+@book_router.post("/add/", response_class=ORJSONResponse, response_model=BookRead)
+async def create_book(
+    new_book: Annotated[BookCreate, Body()],
+    repo: Annotated[BookRepository, Depends(BookRepository.create)],
+    _: Annotated[User, Depends(UserAuthManager([UserPrivileges.Admin]))],
+) -> Annotated[BookRead, ORJSONResponse]:
+    result = await repo.add(**new_book.model_dump(exclude_none=True))
+    book = BookRead.create_book(result)
+    return ORJSONResponse(
+        status_code=status.HTTP_201_CREATED,
+        content={"message": f"Book with id '{book.id}' created", "model": book.model_dump(exclude_none=True)},
+    )
+
+
 # async def create_car(
 #     new_car: CarCreate = Body(...),
 #     session: AsyncSession = Depends(get_session),
