@@ -70,8 +70,15 @@ async def search_books(
     pagination: Pagination,
     include_ratings: IncludeRatingsQuery = False,
 ) -> Annotated[list[BookRead], ORJSONResponse]:
+    results = await repo.filter_by(
+        include_ratings, pagination, **search.model_dump(exclude_none=True, exclude_unset=True)
+    )
 
-    return ORJSONResponse(status_code=status.HTTP_200_OK, content={"books": "[book.model_dump() for book in books]"})
+    books = [BookRead.create_book(result) for result in results]
+
+    if not books:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Books not found")
+    return ORJSONResponse(status_code=status.HTTP_200_OK, content={"books": [book.model_dump() for book in books]})
 
 
 # @book_router.post("/filter/", response_class=ORJSONResponse, response_model=List[Car])
