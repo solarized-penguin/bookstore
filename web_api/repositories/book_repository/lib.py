@@ -5,14 +5,14 @@ from sqlalchemy.sql.base import ReadOnlyColumnCollection
 from sqlalchemy.sql.elements import BinaryExpression
 from sqlmodel import SQLModel
 from sqlmodel.sql.expression import Select, SelectOfScalar, select
-from sqlalchemy import func as DbFunc
+from sqlalchemy import func as db_func
 
 from db import Book, BookRating
 from shared import SearchRange
 
 
 def create_base_select(include_ratings: bool) -> Select[Row[Book, BookRating]] | SelectOfScalar[Book]:
-    return select(Book, BookRating).where(Book.id == BookRating.book_id) if include_ratings else select(Book)
+    return select(Book, BookRating).join(BookRating, isouter=True) if include_ratings else select(Book)
 
 
 class RatingsFilter(SQLModel):
@@ -52,7 +52,7 @@ class BookFilter(SQLModel):
         if obj.title:
             clauses.append(columns["title"].like(f"%{obj.title}%"))
         if obj.author:
-            author_clause = DbFunc.array_to_string(columns["authors"], ",").like(f"%{obj.author}%")
+            author_clause = db_func.array_to_string(columns["authors"], ",").like(f"%{obj.author}%")
             clauses.append(author_clause)
         if obj.publication_date:
             clauses.append(obj.publication_date.create_db_clause(columns["publication_date"]))

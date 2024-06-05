@@ -8,7 +8,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from db import Book, BookRating, get_session
 from lib import Paginator, paginate_query
 from .lib import create_base_select, BookFilter
-from .exceptions import BookWithThisIsbnAlreadyExists
+from .exceptions import BookWithThisIsbnAlreadyExists, BookDoesNotExist
 from ..base_repository import BaseRepository
 
 
@@ -33,7 +33,7 @@ class BookRepository(BaseRepository[Book]):
         statement = statement.where(and_(*filters)) if filters else statement
         return await self._db.exec(statement)
 
-    async def add(self, **kwargs) -> Book | tuple[Book, BookRating]:
+    async def add(self, **kwargs: Any) -> Book | tuple[Book, BookRating]:
         new_book = Book(**kwargs)
         is_book_exists = await self._verify_if_book_exists(new_book.isbn)
         if is_book_exists:
@@ -52,6 +52,24 @@ class BookRepository(BaseRepository[Book]):
             return new_book, new_ratings
 
         return new_book
+
+    async def remove(self, id: int) -> int:
+        results = await self.by_id(id, include_ratings=True)
+        book_data = results.first()
+        if not book_data:
+            raise BookDoesNotExist()
+
+        book = book_data[0] if isinstance(book_data, Row) else book_data
+        ratings = book_data[1] if isinstance(book_data, Row) else None
+
+        if ratings:
+            await self._db.delete(ratings)
+            await self._db.commit()
+
+        await self._db.delete(book)
+        await self._db.commit()
+
+        return book.id
 
     async def _verify_if_book_exists(self, isbn: str) -> bool:
         statement = create_base_select(include_ratings=False).where(Book.isbn == isbn)

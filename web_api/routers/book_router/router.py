@@ -31,7 +31,7 @@ async def get_books(
     )
 
 
-@book_router.get("/{id}/", response_model=BookRead)
+@book_router.get("/{id}", response_model=BookRead)
 async def get_book_by_id(
     repo: Annotated[BookRepository, Depends(BookRepository.create)],
     _: Annotated[User, Depends(UserAuthManager())],
@@ -81,11 +81,22 @@ async def search_books(
     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"books": [book.model_dump() for book in books]})
 
 
+@book_router.delete("/remove/{id}", response_class=ORJSONResponse, response_model=int)
+async def remove_book(
+    id: Annotated[int, Path(title="Book id", gt=0)],
+    repo: Annotated[BookRepository, Depends(BookRepository.create)],
+    _: Annotated[User, Depends(UserAuthManager(UserPrivileges.Admin))],
+) -> Annotated[BookRead, ORJSONResponse]:
+    removed_id = await repo.remove(id)
+
+    return ORJSONResponse(status_code=status.HTTP_200_OK, content={"message": f"Book with id '{removed_id}' removed"})
+
+
 @book_router.post("/add/", response_class=ORJSONResponse, response_model=BookRead)
 async def create_book(
     new_book: Annotated[BookCreate, Body()],
     repo: Annotated[BookRepository, Depends(BookRepository.create)],
-    _: Annotated[User, Depends(UserAuthManager([UserPrivileges.Admin]))],
+    _: Annotated[User, Depends(UserAuthManager(UserPrivileges.Admin))],
 ) -> Annotated[BookRead, ORJSONResponse]:
     result = await repo.add(**new_book.model_dump(exclude_none=True))
     book = BookRead.create_book(result)
@@ -95,22 +106,7 @@ async def create_book(
     )
 
 
-# async def create_car(
-#     new_car: CarCreate = Body(...),
-#     session: AsyncSession = Depends(get_session),
-#     _: User = Depends(UserAuthManager([UserPrivileges.Admin])),
-# ) -> Annotated[Car, ORJSONResponse]:
-#     car = Car(**new_car.dict())
-#     session.add(car)
-#     await session.commit()
-#     await session.refresh(car)
-#     return ORJSONResponse(
-#         status_code=status.HTTP_201_CREATED,
-#         content={"message": f"Car with id '{car.id}' created", "model": car.model_dump()},
-#     )
 #
-#
-# @book_router.delete("/remove/{car_id}", response_class=ORJSONResponse, response_model=Car)
 # async def remove_car(
 #     car_id: int,
 #     session: AsyncSession = Depends(get_session),
@@ -123,10 +119,7 @@ async def create_book(
 #     await session.delete(car)
 #     await session.commit()
 #
-#     return ORJSONResponse(
-#         status_code=status.HTTP_200_OK,
-#         content={"message": f"Car with id '{car.id}' removed", "model": car.model_dump()},
-#     )
+
 #
 #
 # @book_router.patch("/update/{car_id}", response_class=ORJSONResponse, response_model=Car)

@@ -60,7 +60,7 @@ async def login_user(
 
 @user_router.get("/", response_model=List[User])
 async def get_users(
-    session: Annotated[AsyncSession, Depends(get_session)], _: User = Depends(UserAuthManager([UserPrivileges.Admin]))
+    session: Annotated[AsyncSession, Depends(get_session)], _: User = Depends(UserAuthManager(UserPrivileges.Admin))
 ) -> Annotated[List[User], ORJSONResponse]:
     results = await session.execute(select(User))
     users = results.scalars().all()
@@ -69,11 +69,11 @@ async def get_users(
     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"users": [user.model_dump() for user in users]})
 
 
-@user_router.get("/{id}/", response_model=User)
+@user_router.get("/{id}", response_model=User)
 async def get_user(
     id: int = Path(..., title="User id", gt=0),
     session: AsyncSession = Depends(get_session),
-    _: User = Depends(UserAuthManager([UserPrivileges.Admin])),
+    _: User = Depends(UserAuthManager(UserPrivileges.Admin)),
 ) -> Annotated[User, ORJSONResponse]:
     user = await session.get(User, id)
     if not user:

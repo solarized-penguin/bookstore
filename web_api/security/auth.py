@@ -71,8 +71,13 @@ async def get_current_user(
 
 
 class UserAuthManager:
-    def __init__(self, required_privileges: List[UserPrivileges] = None) -> None:
-        self.required_privileges = required_privileges if required_privileges else list(UserPrivileges)
+    def __init__(self, required_privileges: list[UserPrivileges] | UserPrivileges | None = None) -> None:
+        if required_privileges:
+            self.required_privileges = (
+                required_privileges if isinstance(required_privileges, list) else [required_privileges]
+            )
+        else:
+            self.required_privileges = list(UserPrivileges)
 
     async def __call__(
         self, token: Annotated[str, Depends(oauth2_scheme)], session: Annotated[AsyncSession, Depends(get_session)]
