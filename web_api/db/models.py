@@ -46,7 +46,7 @@ class Book(BookBase, table=True):
 class UserBase(SQLModel):
     email: str = Field(..., title="Email address", unique=True, index=True, nullable=False)
     username: str = Field(..., title="Username", nullable=False)
-    account_status: UserAccountStatus = Field(UserAccountStatus.Active, title="Account status", nullable=False)
+    account_status: UserAccountStatus = Field(UserAccountStatus.Inactive, title="Account status", nullable=False)
     privileges: UserPrivileges = Field(UserPrivileges.Client, title="Privileges", nullable=False)
     created_at: datetime = Field(
         default_factory=utc_now,

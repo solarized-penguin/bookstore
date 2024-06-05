@@ -10,7 +10,7 @@ from sqlmodel import SQLModel, Field
 
 from core import get_settings
 from repositories import UserRepository
-from shared import UserRead, UserPrivileges
+from shared import UserRead, UserPrivileges, UserAccountStatus
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="user/login/")
 
@@ -66,6 +66,9 @@ async def get_current_user(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     user = UserRead.create_user(db_user)
+
+    if user.account_status is UserAccountStatus.Inactive:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Your account is not active")
 
     if required_privileges and user.privileges not in required_privileges:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient privileges")

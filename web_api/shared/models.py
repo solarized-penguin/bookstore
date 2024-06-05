@@ -38,7 +38,7 @@ class SearchRange(SQLModel):
 class UserRead(SQLModel):
     email: Annotated[EmailStr, Field(title="Email address")]
     username: Annotated[str, Field(title="Username")]
-    account_status: Annotated[UserAccountStatus, Field(title="Account status")] = UserAccountStatus.Active
+    account_status: Annotated[UserAccountStatus, Field(title="Account status")] = UserAccountStatus.Inactive
     privileges: Annotated[UserPrivileges, Field(title="Privileges")] = UserPrivileges.Client
     created_at: Annotated[datetime, Field(default_factory=utc_now, title="Account creation date")]
 
