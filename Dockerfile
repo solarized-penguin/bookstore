@@ -15,7 +15,7 @@ RUN python -m venv venv
 
 RUN poetry install
 
-COPY web_api /app
+COPY ./web_api /app
 COPY ./alembic.ini /app/
 COPY ./migrations /app/migrations
 

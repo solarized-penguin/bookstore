@@ -1,78 +1,72 @@
-from typing import TypeVar, Optional
+from datetime import date
+from typing import Annotated
 
-from sqlmodel import SQLModel, Field, select
+from fastapi import Query
+from sqlmodel import Field
 
-from db.models import FuelType, SellerType, Transmission, Car
-from ..default_model_config import default_model_config
+from core import get_settings
+from db import BookBase, BookRatingBase as Rating, Book as BookDb, BookRating as RatingDb
 
-Statement = TypeVar("Statement")
-
-
-class CarCreate(SQLModel):
-    model_config = default_model_config
-
-    car_name: str = Field(..., title="Car brand")
-    year: int = Field(..., title="Production year")
-    selling_price: float = Field(..., title="Selling price")
-    kms_driven: int = Field(..., title="Kilometers driven")
-    fuel_type: FuelType = Field(..., title="Fuel type")
-    seller_type: SellerType = Field(..., title="Seller type")
-    transmission: Transmission = Field(..., title="Auto or Manual")
-    owner: int = Field(..., title="Number of previous owners")
+IncludeRatingsQuery = Annotated[
+    bool,
+    Query(
+        title="Should model include ratings? Defaults to False",
+        description="Setting to True extends model by attaching average ratings for each book if available",
+        allow_inf_nan=False,
+    ),
+]
 
 
-class CarUpdate(SQLModel):
-    model_config = default_model_config
+class BookRead(BookBase):
+    model_config = get_settings().router_models_config.config
 
-    car_name: str = Field(None, title="Car brand")
-    year: int = Field(None, title="Production year")
-    selling_price: float = Field(None, title="Selling price")
-    kms_driven: int = Field(None, title="Kilometers driven")
-    fuel_type: FuelType = Field(None, title="Fuel type")
-    seller_type: SellerType = Field(None, title="Seller type")
-    transmission: Transmission = Field(None, title="Auto or Manual")
-    owner: int = Field(None, title="Number of previous owners")
+    id: Annotated[int, Field(title="Book id", gt=0)]
+    rating: Annotated[
+        Rating | None,
+        Field(title="Book avg rating stats", description="Average readers rating, number of votes and reviews"),
+    ] = None
 
+    @classmethod
+    def create_book(cls, book_data: tuple[BookDb, RatingDb] | BookDb) -> "BookRead":
+        book = book_data[0] if isinstance(book_data, tuple) else book_data
+        rating = book_data[1] if isinstance(book_data, tuple) else None
 
-class CarFilter(SQLModel):
-    model_config = default_model_config
-
-    car_name: str = Field(None, title="Car brand")
-    fuel_type: FuelType = Field(None, title="Fuel type")
-    seller_type: SellerType = Field(None, title="Seller type")
-    transmission: Transmission = Field(None, title="Auto or Manual")
-
-
-def build_car_filter_statement(
-    car_filter: Optional[CarFilter],
-    min_selling_price: Optional[float],
-    max_selling_price: Optional[float],
-    no_older_than_created_in_year: Optional[int],
-    max_kms_driven: Optional[int],
-    fewer_owners_than: Optional[int],
-) -> Statement:
-    excluded_field = "car_name"
-
-    statement = select(Car)
-
-    if car_filter:
-        filters = car_filter.model_dump(exclude_none=True)
-        statement = (
-            statement.filter_by(**filters)
-            if excluded_field not in filters
-            else statement.filter_by(**car_filter.model_dump(exclude_none=True, exclude=excluded_field))
+        return cls(
+            id=book.id,
+            title=book.title,
+            authors=book.authors,
+            isbn=book.isbn,
+            isbn13=book.isbn13,
+            language=book.language,
+            pages=book.pages,
+            publication_date=book.publication_date,
+            publisher=book.publisher,
+            rating=Rating(average=rating.average, votes=rating.votes, reviews=rating.reviews) if rating else None,
         )
 
-        if excluded_field in filters:
-            statement = statement.where(Car.car_name.like(f"%{car_filter.car_name}%"))
-    if min_selling_price:
-        statement = statement.where(Car.selling_price >= min_selling_price)
-    if max_selling_price:
-        statement = statement.where(Car.selling_price <= max_selling_price)
-    if no_older_than_created_in_year:
-        statement = statement.where(Car.year >= no_older_than_created_in_year)
-    if max_kms_driven:
-        statement = statement.where(Car.kms_driven <= max_kms_driven)
-    if fewer_owners_than:
-        statement = statement.where(Car.owner < fewer_owners_than)
-    return statement
+
+class BookCreate(BookBase):
+    model_config = get_settings().router_models_config.config
+
+    rating: Annotated[
+        Rating | None,
+        Field(title="Book avg rating stats", description="Average readers rating, number of votes and reviews"),
+    ] = None
+
+
+class BookUpdate(BookBase):
+    model_config = get_settings().router_models_config.config
+
+    title: Annotated[str | None, Field(title="Book title")] = None
+    authors: Annotated[list[str] | None, Field(title="Book author/authors")] = None
+    isbn: Annotated[str | None, Field(title="Isbn")] = None
+    isbn13: Annotated[str | None, Field(title="Isbn13")] = None
+    language: Annotated[str | None, Field(title="Language code")] = None
+    pages: Annotated[int | None, Field(title="Number of pages", nullable=False)] = None
+    publication_date: Annotated[date | None, Field(title="Publication date")] = None
+    publisher: Annotated[str | None, Field(title="Publisher", nullable=False)] = None
+
+    rating: Annotated[
+        Rating | None,
+        Field(title="Book avg rating stats", description="Average readers rating, number of votes and reviews"),
+    ] = None

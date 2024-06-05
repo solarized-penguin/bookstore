@@ -1,4 +1,3 @@
-version: "3.7"
 services:
   app:
     build:
@@ -7,8 +6,10 @@ services:
     env_file:
       - ${DOCKER_COMPOSE_APP_ENV_FILE}
     depends_on:
-      - db
-      - loki
+      db:
+        condition: service_healthy
+      loki:
+        condition: service_started
     ports:
       - ${DOCKER_COMPOSE_APP_EXPOSED_PORTS}
     command: ${DOCKER_COMPOSE_APP_START_COMMAND}
@@ -24,8 +25,15 @@ services:
       POSTGRES_ECHO: ${DOCKER_COMPOSE_POSTGRES_ECHO}
     volumes:
       - pg_data:${DOCKER_COMPOSE_POSTGRES_DATA_VOLUME}
+      - ./db_scripts/${DOCKER_COMPOSE_POSTGRES_INIT_SCRIPT}:/docker-entrypoint-initdb.d/init.sql
     ports:
       - ${DOCKER_COMPOSE_POSTGRES_EXPOSED_PORTS}
+    healthcheck:
+      test: pg_isready -U ${DOCKER_COMPOSE_POSTGRES_USER} -d ${DOCKER_COMPOSE_POSTGRES_DB}
+      interval: 5s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
 
   prometheus:
     image: prom/prometheus:${DOCKER_COMPOSE_PROMETHEUS_VERSION}
