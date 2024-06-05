@@ -1,11 +1,11 @@
-from typing import Any
+from typing import Any, Annotated, Collection
 
 from sqlalchemy import Row
+from sqlalchemy import func as db_func
 from sqlalchemy.sql.base import ReadOnlyColumnCollection
 from sqlalchemy.sql.elements import BinaryExpression
 from sqlmodel import SQLModel
 from sqlmodel.sql.expression import Select, SelectOfScalar, select
-from sqlalchemy import func as db_func
 
 from db import Book, BookRating
 from shared import SearchRange
@@ -64,3 +64,35 @@ class BookFilter(SQLModel):
             clauses.extend(obj.ratings.generate_clauses())
 
         return clauses
+
+
+BookWithOptionalRatings = Annotated[
+    tuple[Book, BookRating | None],
+    "Book with optional ratings, ratings will be returned if 'include_ratings' = true and if ratings exist",
+]
+
+BookData = (
+    Collection[tuple[Book, BookRating]]
+    | Collection[Row[Book, BookRating]]
+    | tuple[Book, BookRating]
+    | Row[Book, BookRating]
+    | Book
+)
+
+
+def _extract_books(books: BookData, single: bool = False) -> list[BookWithOptionalRatings] | BookWithOptionalRatings:
+    def _extract_one(book_data: tuple[Book, BookRating] | Row[Book, BookRating] | Book) -> BookWithOptionalRatings:
+        book = book_data[0] if isinstance(book_data, Row) or isinstance(book_data, tuple) else book_data
+        rating = book_data[1] if isinstance(book_data, Row) or isinstance(book_data, tuple) else None
+
+        return book, rating
+
+    results = [_extract_one(book) for book in books]
+
+    if single:
+        return results[0] if results else None
+
+    return results
+
+
+BookDataExtractor: Annotated[list[BookWithOptionalRatings] | BookWithOptionalRatings, _extract_books] = _extract_books

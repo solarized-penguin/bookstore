@@ -8,7 +8,7 @@ from lib import Pagination
 from repositories import BookRepository
 from security import UserAuthManager
 from .lib import BookSearch
-from .models import BookRead, IncludeRatingsQuery, BookCreate
+from .models import BookRead, IncludeRatingsQuery, BookCreate, BookUpdate
 
 book_router = APIRouter(prefix="/book", tags=["books"], default_response_class=ORJSONResponse, include_in_schema=True)
 
@@ -39,7 +39,7 @@ async def get_book_by_id(
     include_ratings: IncludeRatingsQuery = False,
 ) -> Annotated[BookRead, ORJSONResponse]:
     results = await repo.by_id(id, include_ratings)
-    book = BookRead.create_book(results.first())
+    book = BookRead.create_book(results)
 
     if not book:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Book with id '{id}' not found")
@@ -106,41 +106,24 @@ async def create_book(
     )
 
 
-#
-# async def remove_car(
-#     car_id: int,
-#     session: AsyncSession = Depends(get_session),
-#     _: User = Depends(UserAuthManager([UserPrivileges.Admin])),
-# ) -> Annotated[Car, ORJSONResponse]:
-#     car = await session.get(Car, car_id)
-#     if not car:
-#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Car with id '{car_id}' not found")
-#
-#     await session.delete(car)
-#     await session.commit()
-#
+@book_router.patch("/update/{id}", response_class=ORJSONResponse, response_model=BookRead)
+async def update_book(
+    id: Annotated[int, Path(title="Book id", gt=0)],
+    update: Annotated[
+        BookUpdate, Body(title="Update data", description="Partial update, unset or default values will be discarded")
+    ],
+    repo: Annotated[BookRepository, Depends(BookRepository.create)],
+    _: Annotated[User, Depends(UserAuthManager(UserPrivileges.Admin))],
+) -> Annotated[BookRead, ORJSONResponse]:
+    partial_update = update.model_dump(exclude_none=True, exclude_unset=True)
+    if not partial_update:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No data for update supplied")
 
-#
-#
-# @book_router.patch("/update/{car_id}", response_class=ORJSONResponse, response_model=Car)
-# async def update_car(
-#     car_id: int = Path(..., title="Car id", gt=0),
-#     car_update: CarUpdate = Body(..., title="Update data", description="Provide only fields you want to update"),
-#     session: AsyncSession = Depends(get_session),
-#     _: User = Depends(UserAuthManager([UserPrivileges.Admin])),
-# ) -> Annotated[Car, ORJSONResponse]:
-#     car = await session.get(Car, car_id)
-#     if not car:
-#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Car with id '{car_id}' not found")
-#
-#     car_update_data = car_update.model_dump(exclude_none=True, exclude_unset=True)
-#
-#     updated_car = Car.sqlmodel_update(car, car_update_data)
-#
-#     session.add(updated_car)
-#     await session.commit()
-#     await session.refresh(updated_car)
-#
-#     return ORJSONResponse(
-#         status_code=status.HTTP_201_CREATED, content={"message": "Model updated", "model": updated_car.model_dump()}
-#     )rertreture
+    result = await repo.update(id, **partial_update)
+
+    book = BookRead.create_book(result)
+
+    return ORJSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={"message": f"Book with id '{book.id}' updated", "model": book.model_dump(exclude_none=True)},
+    )
