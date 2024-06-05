@@ -7,3 +7,13 @@ class LogicalOperator(str, Enum):
     lt = "<"
     le = "<="
     eq = "=="
+
+
+class UserPrivileges(str, Enum):
+    Client = "Client"
+    Admin = "Admin"
+
+
+class UserAccountStatus(str, Enum):
+    Active = "Active"
+    Inactive = "Inactive"

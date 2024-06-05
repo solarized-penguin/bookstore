@@ -1,25 +1,18 @@
 from datetime import datetime, UTC
 from functools import cached_property
-from typing import Any, Annotated, List
+from typing import Any, Annotated
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
 from pydantic import computed_field
-from sqlmodel import SQLModel, Field, select
-from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import SQLModel, Field
 
 from core import get_settings
-from db import User, UserPrivileges, UserBase, get_session
 from repositories import UserRepository
+from shared import UserRead, UserPrivileges
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="user/login/")
-
-
-class UserRead(UserBase):
-    @classmethod
-    def create_user(cls, user_data: User) -> "UserRead":
-        return cls(**user_data.model_dump())
 
 
 def _token_creation_timestamp_utc() -> int:
@@ -60,7 +53,7 @@ class Token(SQLModel):
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     repo: Annotated[UserRepository, Depends(UserRepository.create)],
-    required_privileges: List[UserPrivileges],
+    required_privileges: list[UserPrivileges],
 ) -> UserRead:
     payload = jwt.decode(
         token, get_settings().security.jwt_secret_key, algorithms=[get_settings().security.jwt_algorithm]

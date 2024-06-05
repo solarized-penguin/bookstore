@@ -3,10 +3,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body
 from fastapi.responses import ORJSONResponse
 
-from db import User, UserPrivileges
-from lib import Pagination
+
 from repositories import BookRepository
 from security import UserAuthManager
+from shared import UserPrivileges, UserRead, Pagination
 from .lib import BookSearch
 from .models import BookRead, IncludeRatingsQuery, BookCreate, BookUpdate
 
@@ -16,7 +16,7 @@ book_router = APIRouter(prefix="/book", tags=["books"], default_response_class=O
 @book_router.get("/", response_model=list[BookRead])
 async def get_books(
     repo: Annotated[BookRepository, Depends(BookRepository.create)],
-    _: Annotated[User, Depends(UserAuthManager())],
+    _: Annotated[UserRead, Depends(UserAuthManager())],
     pagination: Pagination,
     include_ratings: IncludeRatingsQuery = False,
 ) -> Annotated[list[BookRead], ORJSONResponse]:
@@ -34,7 +34,7 @@ async def get_books(
 @book_router.get("/{id}", response_model=BookRead)
 async def get_book_by_id(
     repo: Annotated[BookRepository, Depends(BookRepository.create)],
-    _: Annotated[User, Depends(UserAuthManager())],
+    _: Annotated[UserRead, Depends(UserAuthManager())],
     id: Annotated[int, Path(title="Book id", gt=0)],
     include_ratings: IncludeRatingsQuery = False,
 ) -> Annotated[BookRead, ORJSONResponse]:
@@ -49,7 +49,7 @@ async def get_book_by_id(
 @book_router.get("/ids/", response_model=list[BookRead])
 async def get_books_by_ids(
     repo: Annotated[BookRepository, Depends(BookRepository.create)],
-    _: Annotated[User, Depends(UserAuthManager())],
+    _: Annotated[UserRead, Depends(UserAuthManager())],
     ids: Annotated[list[int], Query(title="List of book ids", min_length=1)],
     include_ratings: IncludeRatingsQuery = False,
 ) -> Annotated[list[BookRead], ORJSONResponse]:
@@ -65,7 +65,7 @@ async def get_books_by_ids(
 @book_router.get("/search/", response_model=list[BookRead])
 async def search_books(
     repo: Annotated[BookRepository, Depends(BookRepository.create)],
-    _: Annotated[User, Depends(UserAuthManager())],
+    _: Annotated[UserRead, Depends(UserAuthManager())],
     search: BookSearch,
     pagination: Pagination,
     include_ratings: IncludeRatingsQuery = False,
@@ -81,22 +81,22 @@ async def search_books(
     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"books": [book.model_dump() for book in books]})
 
 
-@book_router.delete("/remove/{id}", response_class=ORJSONResponse, response_model=int)
+@book_router.delete("/remove/{id}", response_model=int)
 async def remove_book(
     id: Annotated[int, Path(title="Book id", gt=0)],
     repo: Annotated[BookRepository, Depends(BookRepository.create)],
-    _: Annotated[User, Depends(UserAuthManager(UserPrivileges.Admin))],
+    _: Annotated[UserRead, Depends(UserAuthManager(UserPrivileges.Admin))],
 ) -> Annotated[BookRead, ORJSONResponse]:
     removed_id = await repo.remove(id)
 
     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"message": f"Book with id '{removed_id}' removed"})
 
 
-@book_router.post("/add/", response_class=ORJSONResponse, response_model=BookRead)
+@book_router.post("/add/", response_model=BookRead)
 async def create_book(
     new_book: Annotated[BookCreate, Body()],
     repo: Annotated[BookRepository, Depends(BookRepository.create)],
-    _: Annotated[User, Depends(UserAuthManager(UserPrivileges.Admin))],
+    _: Annotated[UserRead, Depends(UserAuthManager(UserPrivileges.Admin))],
 ) -> Annotated[BookRead, ORJSONResponse]:
     result = await repo.add(**new_book.model_dump(exclude_none=True))
     book = BookRead.create_book(result)
@@ -106,14 +106,14 @@ async def create_book(
     )
 
 
-@book_router.patch("/update/{id}", response_class=ORJSONResponse, response_model=BookRead)
+@book_router.patch("/update/{id}", response_model=BookRead)
 async def update_book(
     id: Annotated[int, Path(title="Book id", gt=0)],
     update: Annotated[
         BookUpdate, Body(title="Update data", description="Partial update, unset or default values will be discarded")
     ],
     repo: Annotated[BookRepository, Depends(BookRepository.create)],
-    _: Annotated[User, Depends(UserAuthManager(UserPrivileges.Admin))],
+    _: Annotated[UserRead, Depends(UserAuthManager(UserPrivileges.Admin))],
 ) -> Annotated[BookRead, ORJSONResponse]:
     partial_update = update.model_dump(exclude_none=True, exclude_unset=True)
     if not partial_update:

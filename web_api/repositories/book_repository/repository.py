@@ -3,10 +3,9 @@ from typing import Annotated, Any
 from fastapi import Depends
 from sqlmodel import and_
 from sqlmodel.ext.asyncio.session import AsyncSession
-
+from shared import Paginator, paginate_query
 from db import Book, BookRating, get_session
-from lib import Paginator, paginate_query
-from .exceptions import BookWithThisIsbnAlreadyExists, BookDoesNotExist
+from .exceptions import BookWithThisIsbnAlreadyExists
 from .lib import create_base_select, BookFilter, BookWithOptionalRatings, BookDataExtractor
 from ..base_repository import BaseRepository
 

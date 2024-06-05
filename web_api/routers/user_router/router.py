@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, status, Form, HTTPException, Path
 from fastapi.responses import ORJSONResponse
 from pydantic import SecretStr
 
-from db import UserPrivileges
+from shared import UserPrivileges
 from repositories import UserRepository
 from security import Token, UserAuthManager, verify_password, UserRead
 from .lib import UserRegistrationForm
@@ -72,3 +72,6 @@ async def get_user(
 @user_router.get("/current/", response_model=UserRead)
 async def get_logged_user(user: Annotated[UserRead, Depends(UserAuthManager())]) -> Annotated[UserRead, ORJSONResponse]:
     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"user": user.model_dump()})
+
+
+# @user_router.get("/remove/{id}", response_model=int)

@@ -1,7 +1,7 @@
 from datetime import date, UTC, datetime
 from enum import Enum
 from typing import Optional
-
+from shared import UserPrivileges, UserAccountStatus, utc_now
 from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import (
     TIMESTAMP as PG_TIMESTAMP,
@@ -10,10 +10,6 @@ from sqlalchemy.dialects.postgresql import (
     DATE as PG_DATE,
 )
 from sqlmodel import SQLModel, Field
-
-
-def _utc_now() -> datetime:
-    return datetime.now(UTC)
 
 
 class BookBase(SQLModel):
@@ -47,23 +43,13 @@ class Book(BookBase, table=True):
     id: int | None = Field(None, primary_key=True, title="Primary key")
 
 
-class UserPrivileges(str, Enum):
-    Client = "Client"
-    Admin = "Admin"
-
-
-class UserAccountStatus(str, Enum):
-    Active = "Active"
-    Inactive = "Inactive"
-
-
 class UserBase(SQLModel):
     email: str = Field(..., title="Email address", unique=True, index=True, nullable=False)
     username: str = Field(..., title="Username", nullable=False)
     account_status: UserAccountStatus = Field(UserAccountStatus.Active, title="Account status", nullable=False)
     privileges: UserPrivileges = Field(UserPrivileges.Client, title="Privileges", nullable=False)
     created_at: datetime = Field(
-        default_factory=_utc_now,
+        default_factory=utc_now,
         title="Account creation date",
         sa_column=Column(PG_TIMESTAMP(timezone=True), nullable=False),
     )
@@ -88,7 +74,7 @@ class Order(SQLModel, table=True):
 
     id: Optional[int] = Field(None, primary_key=True, title="Primary Key of the order table")
     order_date: datetime = Field(
-        default_factory=_utc_now, title="Order date", sa_column=Column(PG_TIMESTAMP(timezone=True), nullable=False)
+        default_factory=utc_now, title="Order date", sa_column=Column(PG_TIMESTAMP(timezone=True), nullable=False)
     )
     status: OrderStatus = Field(OrderStatus.Pending, title="Order status", nullable=False)
     total_price: float = Field(..., title="Total order price", nullable=False)

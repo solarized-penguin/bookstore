@@ -3,9 +3,10 @@ from typing import Annotated, Any
 from fastapi import Depends
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
+
+from db import User, get_session
 from .exceptions import UserWithThisEmailAlreadyExists
 from ..base_repository import BaseRepository
-from db import User, UserAccountStatus, UserPrivileges, get_session
 
 
 class UserRepository(BaseRepository[User]):

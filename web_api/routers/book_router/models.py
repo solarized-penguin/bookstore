@@ -2,7 +2,6 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import Query
-from sqlalchemy import Row
 from sqlmodel import Field
 
 from core import get_settings
