@@ -3,42 +3,22 @@ from typing import Annotated, List
 from fastapi import APIRouter, Depends, status, Form, HTTPException, Path
 from fastapi.responses import ORJSONResponse
 from pydantic import SecretStr
-from sqlalchemy import select
-from sqlmodel.ext.asyncio.session import AsyncSession
 
-from db import User, UserPrivileges
-from db import get_session
-from .models import UserRegistrationValidator
-from security import Token, UserAuthManager, verify_password
-
+from db import UserPrivileges
+from repositories import UserRepository
+from security import Token, UserAuthManager, verify_password, UserRead
+from .lib import UserRegistrationForm
 
 user_router = APIRouter(prefix="/user", tags=["users"], default_response_class=ORJSONResponse, include_in_schema=True)
 
 
-@user_router.post("/register/", response_model=User)
+@user_router.post("/register/", response_model=UserRead)
 async def register_user(
-    email: str = Form(..., title="Email"),
-    password: SecretStr = Form(..., title="Password"),
-    repeat_password: SecretStr = Form(..., title="Repeat Password"),
-    username: str = Form(..., title="Username", min_length=6),
-    session: AsyncSession = Depends(get_session),
-) -> Annotated[User, ORJSONResponse]:
-    valid_user = UserRegistrationValidator(
-        email=email, password=password, repeat_password=repeat_password, username=username
-    )
-
-    result = await session.execute(select(User).where(User.email == valid_user.email))
-    user = result.scalar_one_or_none()
-
-    if user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User with this email already exists")
-
-    user = User(email=valid_user.email, hashed_password=valid_user.hashed_password, username=valid_user.username)
-
-    session.add(user)
-    await session.commit()
-    await session.refresh(user)
-
+    user_form: Annotated[UserRegistrationForm, Depends(UserRegistrationForm.create_form)],
+    repo: Annotated[UserRepository, Depends(UserRepository.create)],
+) -> Annotated[UserRead, ORJSONResponse]:
+    new_user = await repo.add(**user_form.model_dump())
+    user = UserRead.create_user(new_user)
     return ORJSONResponse(status_code=status.HTTP_201_CREATED, content={"user": user.model_dump()})
 
 
@@ -46,41 +26,49 @@ async def register_user(
 async def login_user(
     email: Annotated[str, Form(..., title="Email", alias="username")],
     password: Annotated[SecretStr, Form(..., title="Password", alias="password")],
-    session: Annotated[AsyncSession, Depends(get_session)],
+    repo: Annotated[UserRepository, Depends(UserRepository.create)],
 ) -> ORJSONResponse:
-    result = await session.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
-    if not user:
+    db_user = await repo.by_email(email)
+
+    if not db_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email or password are incorrect")
-    elif not verify_password(password.get_secret_value(), user.hashed_password):
+    elif not verify_password(password.get_secret_value(), db_user.hashed_password):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect password")
 
-    return ORJSONResponse(Token.create_access_token(user))
+    return ORJSONResponse(Token.create_access_token(UserRead.create_user(db_user)))
 
 
-@user_router.get("/", response_model=List[User])
+@user_router.get("/", response_model=List[UserRead])
 async def get_users(
-    session: Annotated[AsyncSession, Depends(get_session)], _: User = Depends(UserAuthManager(UserPrivileges.Admin))
-) -> Annotated[List[User], ORJSONResponse]:
-    results = await session.execute(select(User))
-    users = results.scalars().all()
-    if not users:
+    repo: Annotated[UserRepository, Depends(UserRepository.create)],
+    _: UserRead = Depends(UserAuthManager(UserPrivileges.Admin)),
+) -> Annotated[List[UserRead], ORJSONResponse]:
+    db_users = await repo.all()
+
+    if not db_users:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Users not found")
+
+    users = [UserRead.create_user(db_user) for db_user in db_users]
+
     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"users": [user.model_dump() for user in users]})
 
 
-@user_router.get("/{id}", response_model=User)
+@user_router.get("/{id}", response_model=UserRead)
 async def get_user(
-    id: int = Path(..., title="User id", gt=0),
-    session: AsyncSession = Depends(get_session),
-    _: User = Depends(UserAuthManager(UserPrivileges.Admin)),
-) -> Annotated[User, ORJSONResponse]:
-    user = await session.get(User, id)
-    if not user:
+    id: Annotated[int, Path(title="User id", gt=0)],
+    repo: Annotated[UserRepository, Depends(UserRepository.create)],
+    _: UserRead = Depends(UserAuthManager(UserPrivileges.Admin)),
+) -> Annotated[UserRead, ORJSONResponse]:
+    db_user = await repo.by_id(id)
+
+    if not db_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id '{id}' not found")
+
+    user = UserRead.create_user(db_user)
+
     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"user": user.model_dump()})
 
 
-@user_router.get("/current/", response_model=User)
-async def get_logged_user(user: Annotated[User, Depends(UserAuthManager())]) -> Annotated[User, ORJSONResponse]:
+@user_router.get("/current/", response_model=UserRead)
+async def get_logged_user(user: Annotated[UserRead, Depends(UserAuthManager())]) -> Annotated[UserRead, ORJSONResponse]:
     return ORJSONResponse(status_code=status.HTTP_200_OK, content={"user": user.model_dump()})

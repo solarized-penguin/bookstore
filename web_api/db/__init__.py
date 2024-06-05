@@ -8,5 +8,6 @@ from .models import (
     User,
     OrderStatus,
     Order,
+    UserBase,
 )
 from .session import get_session

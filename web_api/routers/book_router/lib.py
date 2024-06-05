@@ -2,7 +2,6 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import Query, Depends
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlmodel import SQLModel
 
 from core import get_settings

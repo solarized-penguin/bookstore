@@ -57,21 +57,23 @@ class UserAccountStatus(str, Enum):
     Inactive = "Inactive"
 
 
-class User(SQLModel, table=True):
-    __tablename__ = "users"
-
-    id: Optional[int] = Field(None, primary_key=True, title="Primary Key")
+class UserBase(SQLModel):
     email: str = Field(..., title="Email address", unique=True, index=True, nullable=False)
-    hashed_password: bytes = Field(..., title="Hashed Password", exclude=True, nullable=False)
     username: str = Field(..., title="Username", nullable=False)
-    privileges: UserPrivileges = Field(UserPrivileges.Client, title="Privileges", nullable=False)
     account_status: UserAccountStatus = Field(UserAccountStatus.Active, title="Account status", nullable=False)
+    privileges: UserPrivileges = Field(UserPrivileges.Client, title="Privileges", nullable=False)
     created_at: datetime = Field(
         default_factory=_utc_now,
         title="Account creation date",
         sa_column=Column(PG_TIMESTAMP(timezone=True), nullable=False),
-        exclude=True,
     )
+
+
+class User(UserBase, table=True):
+    __tablename__ = "users"
+
+    id: int | None = Field(None, primary_key=True, title="Primary Key")
+    hashed_password: bytes = Field(..., title="Hashed Password", exclude=True, nullable=False)
 
 
 class OrderStatus(str, Enum):
